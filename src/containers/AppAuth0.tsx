@@ -9,7 +9,8 @@ import { authService } from "../machines/authMachine";
 import AlertBar from "../components/AlertBar";
 import { bankAccountsMachine } from "../machines/bankAccountsMachine";
 import PrivateRoutesContainer from "./PrivateRoutesContainer";
-import { withAuthenticationRequired, useAuth0 } from "@auth0/auth0-react";
+//import { withAuthenticationRequired, useAuth0 } from "@auth0/auth0-react";
+import { useAuth0 } from "@auth0/auth0-react";
 
 // @ts-ignore
 if (window.Cypress) {
@@ -66,4 +67,4 @@ const AppAuth0: React.FC = () => {
   );
 };
 
-export default withAuthenticationRequired(AppAuth0);
+export default AppAuth0;

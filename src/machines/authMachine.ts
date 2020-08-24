@@ -142,7 +142,7 @@ export const authMachine = Machine<AuthMachineContext, AuthMachineSchema, AuthMa
         };
 
         // Set Auth0 Access Token in Local Storage for API calls
-        localStorage.setItem(process.env.REACT_APP_AUTH0_TOKEN_NAME!, event.token);
+        localStorage.setItem(process.env.REACT_APP_AUTH_TOKEN_NAME!, event.token);
 
         return Promise.resolve(ourUser);
       },

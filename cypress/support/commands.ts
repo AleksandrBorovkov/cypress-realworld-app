@@ -352,3 +352,58 @@ Cypress.Commands.add("loginByAuth0", (username, password) => {
     }
   });
 });
+
+Cypress.Commands.add("loginByApiAuth0", (username, password, appState = { targetUrl: "/" }) => {
+  cy.log(`Logging in as ${username}`);
+  const options = {
+    method: "POST",
+    url: `https://${Cypress.env("auth0_domain")}/oauth/token`,
+    body: {
+      grant_type: "password",
+      username: username,
+      password: password,
+      audience: Cypress.env("auth0_audience"),
+      scope: Cypress.env("auth0_scope"),
+      client_id: Cypress.env("auth0_client_id"),
+      client_secret: Cypress.env("auth0_client_secret"),
+    },
+  };
+  cy.request(options).then(({ body }) => {
+    const { access_token, expires_in, id_token } = body;
+
+    cy.server();
+
+    cy.route({
+      url: "oauth/token",
+      method: "POST",
+      response: {
+        access_token: access_token,
+        id_token: id_token,
+        scope: Cypress.env("auth0_scope"),
+        expires_in: expires_in,
+        token_type: "Bearer",
+      },
+    });
+
+    // Set Auth0 Access Token in Local Storage for API calls
+    window.localStorage.setItem(process.env.REACT_APP_AUTH_TOKEN_NAME!, access_token);
+
+    // Auth0 SPA SDK will check for value in cookie to get appState
+    // add validate nonce (which has been removed for simplicity)
+    const stateId = "test"; // good enough for you local machine, but not for prod
+    cy.setCookie(
+      `a0.spajs.txs.${stateId}`,
+      encodeURIComponent(
+        JSON.stringify({
+          appState: appState,
+          scope: Cypress.env("auth0_scope"),
+          //audience: "default",
+          audience: Cypress.env("auth0_audience"),
+          redirect_uri: "http://localhost:3000",
+        })
+      )
+    ).then(() => {
+      cy.visit(`/?code=test-code&state=${stateId}`);
+    });
+  });
+});
