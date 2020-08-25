@@ -3,6 +3,7 @@
 
 import { pick } from "lodash/fp";
 import { format as formatDate } from "date-fns";
+import jwt_decode from "jwt-decode";
 
 Cypress.Commands.add("getBySel", (selector, ...args) => {
   return cy.get(`[data-test=${selector}]`, ...args);
@@ -353,57 +354,47 @@ Cypress.Commands.add("loginByAuth0", (username, password) => {
   });
 });
 
-Cypress.Commands.add("loginByApiAuth0", (username, password, appState = { targetUrl: "/" }) => {
+Cypress.Commands.add("loginByApiAuth0", (username: string, password: string) => {
   cy.log(`Logging in as ${username}`);
+  const client_id = Cypress.env("auth0_client_id");
+  const client_secret = Cypress.env("auth0_client_secret");
+  const audience = Cypress.env("auth0_audience");
+  const scope = Cypress.env("auth0_scope");
+
   const options = {
     method: "POST",
     url: `https://${Cypress.env("auth0_domain")}/oauth/token`,
     body: {
       grant_type: "password",
-      username: username,
-      password: password,
-      audience: Cypress.env("auth0_audience"),
-      scope: Cypress.env("auth0_scope"),
-      client_id: Cypress.env("auth0_client_id"),
-      client_secret: Cypress.env("auth0_client_secret"),
+      username,
+      password,
+      audience,
+      scope,
+      client_id,
+      client_secret,
     },
   };
   cy.request(options).then(({ body }) => {
     const { access_token, expires_in, id_token } = body;
-
-    cy.server();
-
-    cy.route({
-      url: "oauth/token",
-      method: "POST",
-      response: {
-        access_token: access_token,
-        id_token: id_token,
-        scope: Cypress.env("auth0_scope"),
-        expires_in: expires_in,
+    const key = `@@auth0spajs@@::${client_id}::${audience}::${scope}`;
+    const auth0Cache = {
+      body: {
+        client_id,
+        access_token,
+        id_token,
+        scope,
+        expires_in,
         token_type: "Bearer",
+        decodedToken: {
+          user: jwt_decode(id_token),
+        },
       },
-    });
+      expiresAt: Math.floor(Date.now() / 1000) + expires_in,
+    };
+    window.localStorage.setItem(key, JSON.stringify(auth0Cache));
 
-    // Set Auth0 Access Token in Local Storage for API calls
-    window.localStorage.setItem(process.env.REACT_APP_AUTH_TOKEN_NAME!, access_token);
+    cy.setCookie("auth0.is.authenticated", "true");
 
-    // Auth0 SPA SDK will check for value in cookie to get appState
-    // add validate nonce (which has been removed for simplicity)
-    const stateId = "test"; // good enough for you local machine, but not for prod
-    cy.setCookie(
-      `a0.spajs.txs.${stateId}`,
-      encodeURIComponent(
-        JSON.stringify({
-          appState: appState,
-          scope: Cypress.env("auth0_scope"),
-          //audience: "default",
-          audience: Cypress.env("auth0_audience"),
-          redirect_uri: "http://localhost:3000",
-        })
-      )
-    ).then(() => {
-      cy.visit(`/?code=test-code&state=${stateId}`);
-    });
+    cy.visit("/");
   });
 });

@@ -28,6 +28,7 @@ if (process.env.REACT_APP_AUTH0) {
       audience={process.env.REACT_APP_AUTH0_AUDIENCE}
       scope={process.env.REACT_APP_AUTH0_SCOPE}
       onRedirectCallback={onRedirectCallback}
+      cacheLocation="localstorage"
     >
       <Router history={history}>
         <ThemeProvider theme={theme}>
